@@ -55,7 +55,8 @@ buildSegmentMapping segmentsList = initial `Map.union` solvedDigits
     easyToSegments =
         fromJust . flip Map.lookup (flipMap initial) :: Char -> Segments
     easyDigitsInOrder = fmap easyToSegments ['1', '4', '7', '8']
-    intersectionLengths a bs = fmap (length . Set.intersection a) bs
+    intersectionLengths :: Ord a => Set a -> [Set a] -> [Int]
+    intersectionLengths a = fmap (length . Set.intersection a)
     solveDigit segments =
         case intersectionLengths segments easyDigitsInOrder of
             -- Got these numbers by calculating them from the example
@@ -68,6 +69,7 @@ buildSegmentMapping segmentsList = initial `Map.union` solvedDigits
             _ -> error "This shouldn't happen since all digits are handled"
     solvedDigits =
         Map.fromList $ fmap (\segs -> (segs, solveDigit segs)) otherDigits
+
 solveRow :: ([Segments], [Segments]) -> Int
 solveRow (segments, output) = read $ fmap toDigit output
   where
@@ -77,7 +79,7 @@ solveRow (segments, output) = read $ fmap toDigit output
 
 parseInput :: String -> [([Segments], [Segments])]
 parseInput =
-    fmap (bimap (parseSegments) (parseSegments) . toTuple . splitOn "|") . lines
+    fmap (bimap parseSegments parseSegments . toTuple . splitOn "|") . lines
     where parseSegments = fmap Set.fromList . words
 
 main :: IO ()
