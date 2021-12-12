@@ -39,12 +39,11 @@ step = do
     flash location = do
         loc <- gets (Map.lookup location)
         case loc of
-            Nothing   -> pure ()
+            Nothing                -> pure ()
             Just (energy, flashed) -> do
-                let energy' = energy + 1
+                let energy'  = energy + 1
                     flashed' = energy' > 9
-                modify'
-                    (Map.adjust (const (energy', flashed')) location)
+                modify' (Map.adjust (const (energy', flashed')) location)
                 when (not flashed && flashed') $ do
                     forM_ (neighbors location) flash
     toFlash :: State Octopuses [Location]
@@ -58,13 +57,16 @@ step = do
     resetEnergyLevels = modify'
         (fmap (\(energy, _) -> (if energy > 9 then 0 else energy, False)))
 
-simulate :: Int -> State Octopuses Int
-simulate iterations 
-    | iterations <= 0 = pure 0
-    | otherwise = do
-        count  <- step
-        count' <- simulate (iterations - 1)
-        pure (count + count')
+simulateUntil :: (Octopuses -> Bool) -> State Octopuses Int
+simulateUntil predicate = go 0
+  where
+    go iteration = do
+        end <- gets predicate
+        if end
+            then pure iteration
+            else do
+                step
+                go (iteration + 1)
 
 showMap :: Octopuses -> String
 showMap octopuses =
@@ -82,5 +84,7 @@ main = do
         .   fmap (fmap (\c -> read [c]))
         .   lines
         <$> readFile inputPath
-    let (flashCount, finalState) = runState (simulate 100) octopuses
-    print flashCount
+    let allFlashed = (== 0) . Map.size . Map.filter ((/= 0) . fst)
+        (iterations, finalState) =
+            runState (simulateUntil allFlashed) octopuses
+    print iterations
