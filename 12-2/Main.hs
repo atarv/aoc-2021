@@ -34,26 +34,29 @@ isEnd :: Cave -> Bool
 isEnd = (== "end")
 
 showPath :: Seq Cave -> String
-showPath = concat . intersperse "," . toList
+showPath = intercalate "," . toList
 
 findPaths :: Graph -> Set (Seq Cave)
-findPaths graph = delve Set.empty Seq.empty "start"
+findPaths graph = delve False Set.empty Seq.empty "start"
   where
     isInPath :: Cave -> Seq Cave -> Bool
     isInPath cave = isJust . Seq.elemIndexL cave
-    delve :: Set (Seq Cave) -> Seq Cave -> Cave -> Set (Seq Cave)
-    delve paths path cave =
-        Set.unions $ fmap (go paths (path Seq.|> cave)) (graph Map.! cave)
-    go :: Set (Seq Cave) -> Seq Cave -> Cave -> Set (Seq Cave)
-    go paths path cave = if isBig cave
-        then delve paths path cave
-        else if isEnd cave
-            then Set.insert (path Seq.|> cave) paths
-            else if cave `isInPath` path then paths else delve paths path cave
+    delve :: Bool -> Set (Seq Cave) -> Seq Cave -> Cave -> Set (Seq Cave)
+    delve smallVisited paths path cave = Set.unions
+        $ fmap (go smallVisited paths (path Seq.|> cave)) (graph Map.! cave)
+    go :: Bool -> Set (Seq Cave) -> Seq Cave -> Cave -> Set (Seq Cave)
+    go smallVisited paths path cave
+        | isBig cave = delve smallVisited paths path cave
+        | isEnd cave = Set.insert (path Seq.|> cave) paths
+        | cave `isInPath` path && (smallVisited || cave `elem` ["start", "end"]) = paths
+        | otherwise = delve (smallVisited || cave `isInPath` path)
+                            paths
+                            path
+                            cave
 
 parseGraph :: String -> Graph
 parseGraph input =
-    let edges = fmap (toPair . splitOn "-") $ lines input :: [Connection]
+    let edges = toPair . splitOn "-" <$> lines input :: [Connection]
         swap (a, b) = (b, a)
         singleton        = (: [])
         firstDirection   = fmap (fmap singleton) edges
